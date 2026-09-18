@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Feedwall</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>body { width: 320px; padding: 14px; } .card { padding: 12px 14px; margin-bottom: 10px; }</style>
+</head>
+<body>
+  <div class="row between" style="margin-bottom:10px">
+    <h1>Feedwall</h1>
+    <label class="row" style="gap:6px"><input type="checkbox" id="enabled"> <span class="muted">On</span></label>
+  </div>
+
+  <div id="needs-key" class="card" hidden>
+    <p><strong>Add your TypeSafe API key to start.</strong></p>
+    <button class="primary" id="open-options-key">Open settings</button>
+  </div>
+
+  <div class="card">
+    <div class="row between">
+      <div><strong id="site-name">This site</strong><div class="muted" id="site-health"></div></div>
+      <label class="row" style="gap:6px"><input type="checkbox" id="site-enabled"> <span class="muted">Filter here</span></label>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row between" style="margin-bottom:8px">
+      <strong>Strictness</strong>
+      <select id="strictness">
+        <option value="relaxed">Relaxed: only obvious cases</option>
+        <option value="balanced">Balanced</option>
+        <option value="strict">Strict: hide more</option>
+      </select>
+    </div>
+    <div class="stats">
+      <div><div class="muted">Judged today</div><div class="stat" id="judged">0</div></div>
+      <div><div class="muted">Hidden</div><div class="stat" id="hidden">0</div></div>
+      <div><div class="muted">Cost</div><div class="stat" id="cost">$0</div></div>
+    </div>
+    <p class="muted" id="note" style="margin:8px 0 0"></p>
+  </div>
+
+  <div class="row between">
+    <button id="open-review">Review what was hidden</button>
+    <button id="open-options">Rules and settings</button>
+  </div>
+  <script src="../core/rules.js"></script>
+  <script src="../core/judge.js"></script>
+  <script src="../content/adapters/sites.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

@@ -1,0 +1,105 @@
+<!doctype html>
+<!-- Visual test bench: the real content script and the real decision code, with a fake extension API and a fake model.
+     Open via a local web server:  ?site=x  or  ?site=hackernews  (add &blur=1 to test blur-until-judged). -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Feedwall harness</title>
+  <link rel="stylesheet" href="../../src/content/style.css">
+  <style>
+    body { margin: 0; background: #000; color: #e7e9ea; font: 15px/1.4 system-ui, sans-serif; }
+    body.hn { background: #f6f6ef; color: #000; font: 10pt Verdana, sans-serif; }
+    .col { max-width: 600px; margin: 0 auto; border-left: 1px solid #2f3336; border-right: 1px solid #2f3336; }
+    article { border-bottom: 1px solid #2f3336; padding: 12px 16px; display: block; }
+    [data-testid="User-Name"] { font-weight: 700; margin-bottom: 2px; }
+    [data-testid="User-Name"] span { color: #71767b; font-weight: 400; }
+    .actions { color: #71767b; font-size: 13px; margin-top: 8px; }
+    table.hnmain { width: 85%; margin: 8px auto; background: #f6f6ef; border-collapse: collapse; }
+    .subtext { color: #828282; font-size: 7pt; } .titleline a { color: #000; text-decoration: none; } .sitestr { color: #828282; font-size: 8pt; }
+    #hud { position: fixed; bottom: 10px; left: 10px; background: #1f6feb; color: #fff; padding: 6px 10px; border-radius: 8px; font: 12px system-ui; z-index: 99; }
+  </style>
+</head>
+<body>
+<div id="feed"></div>
+<div id="hud">loading…</div>
+
+<script src="../../src/core/rules.js"></script>
+<script src="../../src/core/judge.js"></script>
+<script src="../../src/core/stats.js"></script>
+<script src="../../src/content/adapters/sites.js"></script>
+<script>
+  const params = new URLSearchParams(location.search);
+  const SITE = params.get("site") || "x";
+  const { rules, judge, stats, sites } = FW;
+
+  const POSTS = [
+    ["Dana Builds", "Shipped dark mode today. The hard part was 40 hard-coded hex values in the chart component. Replaced them with CSS variables; diff is 212 lines."],
+    ["Growth Guru", "Comment 'GUIDE' below and I'll DM you my 47-page playbook for free. Like + repost so more people see it!"],
+    ["Sam K", "Does anyone know a good way to debounce IntersectionObserver callbacks? Mine fires 60 times on fast scroll."],
+    ["Hot Takes Daily", "Anyone who still uses tabs instead of spaces is a brain-dead idiot and should be fired. No exceptions."],
+    ["Mindset Coach", "Success is not a destination, it's a journey. Here are 7 habits that will transform your mindset: wake up early, stay consistent, believe in yourself."],
+    ["Priya", "We launched our invoicing app today. It imports Stripe payouts and matches them to invoices automatically. Feedback welcome."],
+    ["Maybe Bait", "Most people will never understand this one thing about money. Borderline hook, thread below."],
+    ["Leo", "Benchmarked three SQLite drivers on a Raspberry Pi 5. better-sqlite3 was 3.1x faster on bulk inserts; numbers and script in the repo."],
+  ];
+
+  // A fake model: keyword-driven probabilities, so the page exercises hide, dim and show.
+  function fakeModel(text, ids) {
+    const p = Object.fromEntries(ids.map((id) => [id, 0.03]));
+    if (/comment .* dm you|like \+ repost/i.test(text)) p.engagement_bait = 0.97;
+    if (/brain-dead idiot/i.test(text)) p.rage_bait = 0.93;
+    if (/7 habits|journey/i.test(text)) p.ai_slop = 0.86;
+    if (/borderline hook/i.test(text)) p.engagement_bait = 0.68;
+    return p;
+  }
+
+  const store = { settings: { ...judge.DEFAULT_SETTINGS, apiKey: "harness", blurUntilJudged: params.get("blur") === "1" }, feedback: [] };
+  const log = { judged: 0, hidden: 0, dimmed: 0, feedback: 0 };
+  const hud = () => (document.getElementById("hud").textContent = `harness · ${SITE} · judged ${log.judged} · hidden ${log.hidden} · dimmed ${log.dimmed} · marks ${log.feedback}`);
+
+  window.chrome = {
+    runtime: {
+      lastError: undefined,
+      onMessage: { addListener() {} },
+      sendMessage(message, reply) {
+        const active = rules.activeRules(store.settings);
+        setTimeout(() => {
+          if (message.type === "getSettings") { const { apiKey, ...safe } = store.settings; return reply({ ...safe, hasKey: true }); }
+          if (message.type === "activeRules") return reply(active.map((r) => ({ id: r.id, label: r.label })));
+          if (message.type === "feedback") { store.feedback = stats.addFeedback(store.feedback, message.entry); log.feedback = store.feedback.length; hud(); return reply({ ok: true }); }
+          if (message.type === "judge") {
+            if (!judge.isJudgeable(message.item)) return reply({ action: "show", reason: "too_short" });
+            const decision = judge.decide(fakeModel(message.item.text, active.map((r) => r.id)), store.settings);
+            log.judged++; if (decision.action === "hide") log.hidden++; if (decision.action === "dim") log.dimmed++; hud();
+            reply({ ...decision, key: rules.hashString(message.item.text) });
+          }
+        }, message.type === "judge" ? 350 : 0); // roughly Jev's latency
+      },
+    },
+    storage: { onChanged: { addListener() {} } },
+  };
+
+  // Pretend to be the chosen site, whatever host this page is served from.
+  sites.adapterFor = () => sites.adapters.find((a) => a.site === SITE);
+
+  const feed = document.getElementById("feed");
+  if (SITE === "hackernews") {
+    document.body.className = "hn";
+    feed.innerHTML = `<table class="hnmain"><tbody>${POSTS.map(([who, text], i) => `
+      <tr class="athing submission" id="${i}"><td class="title">${i + 1}.</td><td></td><td class="title"><span class="titleline"><a href="#">${text}</a> <span class="sitestr">example.com</span></span></td></tr>
+      <tr><td colspan="2"></td><td class="subtext">42 points by ${who} 1 hour ago | 12 comments</td></tr>
+      <tr class="spacer" style="height:5px"></tr>`).join("")}</tbody></table>`;
+  } else {
+    feed.className = "col";
+    feed.innerHTML = POSTS.map(([who, text]) => `
+      <article data-testid="tweet"><div>
+        <div data-testid="User-Name">${who} <span>@${who.toLowerCase().replace(/\W/g, "")} · 2h</span></div>
+        <div data-testid="tweetText">${text}</div>
+        <div class="actions">💬 12 &nbsp; 🔁 4 &nbsp; ♥ 87</div>
+      </div></article>`).join("");
+  }
+  hud();
+</script>
+<script src="../../src/content/engine.js"></script>
+</body>
+</html>

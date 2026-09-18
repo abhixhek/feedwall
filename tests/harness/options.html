@@ -1,0 +1,46 @@
+<!doctype html>
+<!-- Renders the real options page against an in-memory chrome.storage seeded with sample history. -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Feedwall options harness</title><link rel="stylesheet" href="../../src/ui/ui.css">
+<style>main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; } header { margin-bottom: 18px; }</style></head>
+<body>
+<script>
+(async () => {
+  const mark = (key, p, verdict, ruleId, text) => ({ key, p, verdict, ruleId, site: "x", state: { site: "x", text } });
+  const hidden = (key, ruleId, ruleLabel, p, author, text) => ({ key, ruleId, ruleLabel, p, author, text, site: "x", ts: Date.now(), state: { site: "x", text } });
+  const store = {
+    settings: { apiKey: "seeded", enabledPresets: ["engagement_bait", "rage_bait", "ai_slop"], customRules: [
+      { id: "custom_demo", label: "posts hyping a product launch countdown", custom: true, instructions: 'Does this post match this description: "posts hyping a product launch countdown"?', criteria: null } ] },
+    recent: [
+      hidden("k1", "engagement_bait", "Engagement bait", 0.97, "Growth Guru", "Comment 'GUIDE' below and I'll DM you my 47-page playbook for free."),
+      hidden("k2", "ai_slop", "Generic filler", 0.78, "Dana Builds", "Three things I learned shipping dark mode: tokens first, screenshots in CI, and never trust a hex value."),
+      hidden("k3", "rage_bait", "Rage bait", 0.93, "Hot Takes Daily", "Anyone who still uses tabs instead of spaces is a brain-dead idiot."),
+    ],
+    feedback: [
+      ...[0.76, 0.78, 0.8, 0.82].map((p, i) => mark("w" + i, p, "wrong", "ai_slop", "A specific post wrongly hidden " + i)),
+      ...[0.9, 0.92, 0.94, 0.95, 0.97, 0.99].map((p, i) => mark("r" + i, p, "right", "ai_slop", "Generic filler correctly hidden " + i)),
+      ...[0.6, 0.66, 0.7].map((p, i) => mark("m" + i, p, "missed", "engagement_bait", "Bait that slipped through " + i)),
+      mark("k1", 0.97, "right", "engagement_bait", "Comment GUIDE below"),
+    ],
+  };
+  const listeners = [];
+  window.chrome = {
+    storage: { local: {
+      get: async (keys) => Object.fromEntries([].concat(keys).filter((k) => k in store).map((k) => [k, structuredClone(store[k])])),
+      set: async (patch) => { Object.assign(store, structuredClone(patch)); },
+    }, onChanged: { addListener: (fn) => listeners.push(fn) } },
+    runtime: { sendMessage: async (message) => {
+      if (message.type === "feedback") store.feedback = FW.stats.addFeedback(store.feedback, message.entry);
+      return { ok: true };
+    } },
+  };
+  const html = await (await fetch("../../src/ui/options.html")).text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  document.body.append(...doc.body.querySelectorAll("main"));
+  for (const src of ["core/rules.js", "core/judge.js", "core/stats.js", "ui/options.js"]) {
+    await new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = "../../src/" + src; s.onload = resolve; s.onerror = reject; document.body.append(s); });
+  }
+})();
+</script>
+</body>
+</html>

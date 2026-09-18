@@ -1,0 +1,8 @@
+{
+  "name": "feedwall",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Plain-English content filter for feeds, powered by a decision model.",
+  "license": "MIT",
+  "scripts": { "test": "node --test tests/core.test.js tests/background.test.js" }
+}

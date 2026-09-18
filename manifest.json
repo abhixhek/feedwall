@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Feedwall",
+  "version": "0.1.0",
+  "description": "Tell your browser in plain English what you don't want to see. It hides those posts on X, YouTube, Reddit, LinkedIn and Hacker News, and shows you when it got it wrong.",
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://api.typesafe.ai/*",
+    "https://x.com/*", "https://twitter.com/*",
+    "https://news.ycombinator.com/*",
+    "https://www.reddit.com/*", "https://old.reddit.com/*",
+    "https://www.youtube.com/*",
+    "https://www.linkedin.com/*"
+  ],
+  "optional_host_permissions": ["https://*/*"],
+  "background": { "service_worker": "src/background.js" },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://x.com/*", "https://twitter.com/*",
+        "https://news.ycombinator.com/*",
+        "https://www.reddit.com/*", "https://old.reddit.com/*",
+        "https://www.youtube.com/*",
+        "https://www.linkedin.com/*"
+      ],
+      "js": ["src/content/adapters/sites.js", "src/content/engine.js"],
+      "css": ["src/content/style.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": { "default_popup": "src/ui/popup.html", "default_title": "Feedwall" },
+  "options_page": "src/ui/options.html"
+}

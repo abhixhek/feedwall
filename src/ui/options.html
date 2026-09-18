@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Feedwall settings</title>
+  <link rel="stylesheet" href="ui.css">
+  <style>main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; } header { margin-bottom: 18px; }</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Feedwall</h1>
+    <p class="muted">Say what you don't want to see. Everything hidden stays one click away.</p>
+  </header>
+
+  <section class="card">
+    <h2>Your TypeSafe API key</h2>
+    <p class="muted">Feedwall has no server. Post text goes from your browser straight to TypeSafe under your own key, and nowhere else. The key is stored only in this browser.</p>
+    <div class="row">
+      <input type="password" id="api-key" placeholder="Paste your key" autocomplete="off" spellcheck="false">
+      <button class="primary" id="save-key">Save and test</button>
+    </div>
+    <p id="key-status" class="muted" style="margin-top:8px"></p>
+  </section>
+
+  <section class="card">
+    <h2>What to hide</h2>
+    <div id="presets"></div>
+    <h2 style="margin-top:14px">Your own rules</h2>
+    <p class="muted">Describe the kind of post. One thing per rule.</p>
+    <div class="row">
+      <input type="text" id="custom-text" placeholder="e.g. posts hyping a product launch countdown" maxlength="160">
+      <button id="add-custom">Add rule</button>
+    </div>
+    <div id="custom-lint" class="warn" style="font-size:13px;margin-top:6px"></div>
+    <div id="customs" style="margin-top:6px"></div>
+  </section>
+
+  <section class="card">
+    <h2>How it behaves</h2>
+    <div class="row between" style="padding:4px 0">
+      <span>Strictness</span>
+      <select id="strictness">
+        <option value="relaxed">Relaxed: hide only obvious cases (90%+)</option>
+        <option value="balanced">Balanced (75%+)</option>
+        <option value="strict">Strict: hide more (60%+)</option>
+      </select>
+    </div>
+    <label class="check"><input type="checkbox" id="dim"> <span>Dim posts it is unsure about<br><span class="muted">Instead of hiding or ignoring the borderline ones.</span></span></label>
+    <label class="check"><input type="checkbox" id="blur"> <span>Blur posts until they are judged<br><span class="muted">No flash of unwanted posts on fast scrolls. Posts un-blur in under a second.</span></span></label>
+    <div class="row between" style="padding:4px 0">
+      <span>Daily request limit <span class="muted">(filtering pauses when reached)</span></span>
+      <input type="number" id="budget" min="100" max="50000" step="100" style="width:110px">
+    </div>
+  </section>
+
+  <section class="card" id="review">
+    <div class="row between"><h2>How is it doing?</h2><span class="muted" id="report-note"></span></div>
+    <p class="muted">Built from your "Right", "Wrong" and "Hide like this" marks. A rule needs about 8 marks before Feedwall suggests a change.</p>
+    <div id="report"></div>
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Recently hidden</h2><button class="small" id="clear-recent">Clear list</button></div>
+    <p class="muted">Mark a few now and then. It is how Feedwall learns where your line is.</p>
+    <div id="recent"></div>
+  </section>
+
+  <section class="card">
+    <h2>Export your marks</h2>
+    <p class="muted">Downloads your marked posts and active rules in <a href="https://github.com/abhixhek/jevcal">jevcal</a>'s format, so you can compute exact thresholds for a target accuracy. The files contain the post text you marked.</p>
+    <div class="row"><button id="export-rows">Download data.jsonl</button><button id="export-questions">Download questions.yaml</button></div>
+  </section>
+</main>
+<script src="../core/rules.js"></script>
+<script src="../core/judge.js"></script>
+<script src="../core/stats.js"></script>
+<script src="options.js"></script>
+</body>
+</html>
