@@ -11,8 +11,7 @@ html[data-fw-peek] tr[data-fw-state="filtered"], html[data-fw-peek] tr[data-fw-f
 [data-fw-state="marked"] { box-shadow: inset 3px 0 0 #3b82f6; }
 [data-fw-state="marked"][data-fw-note]::before {
   content: attr(data-fw-note);
-  display: block; flex: 1 0 100%; width: 100%; box-sizing: border-box; padding: 3px 12px 0;
-  font: 600 11px/1.4 system-ui, sans-serif; color: #3b82f6;
+  font: 600 10px/12px system-ui, sans-serif; color: #3b82f6;
 }
 tr[data-fw-state="marked"][data-fw-note]::before { content: none; display: none; }
 tr[data-fw-state="marked"] > td:last-child { box-shadow: inset 3px 0 0 #3b82f6; }
@@ -43,8 +42,16 @@ tr[data-fw-state="marked"] > td:last-child { box-shadow: inset 3px 0 0 #3b82f6; 
 [data-fw-state="dim"]:hover { opacity: 1; }
 [data-fw-state="dim"][data-fw-note]::before {
   content: attr(data-fw-note);
-  display: block; flex: 1 0 100%; width: 100%; box-sizing: border-box; padding: 2px 12px;
-  font: 11px/1.4 system-ui, sans-serif; opacity: 0.8;
+  font: 10px/12px system-ui, sans-serif; opacity: 0.85;
+}
+
+/* The note must never take part in the host's layout. X lays a post out as a flex ROW, and a full-width note inside
+   that row squeezes the post's content to nothing (found on the live site). So the note floats in the post's top
+   padding instead, and the post's own size and flow are left exactly as the site made them. */
+[data-fw-state="dim"], [data-fw-state="marked"] { position: relative; }
+[data-fw-state="dim"][data-fw-note]::before, [data-fw-state="marked"][data-fw-note]::before {
+  position: absolute; top: 0; left: 16px; z-index: 1;
+  white-space: nowrap; pointer-events: none;
 }
 
 /* a generated block inside a table row becomes a stray cell and shifts the columns, so rows get a tooltip instead */
