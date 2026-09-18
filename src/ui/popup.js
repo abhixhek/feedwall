@@ -1,12 +1,14 @@
 (async function () {
   "use strict";
-  const { judge, sites } = globalThis.FW;
+  const { topics: T, judge, sites } = globalThis.FW;
   const $ = (id) => document.getElementById(id);
   const SITE_NAMES = { x: "X", hackernews: "Hacker News", reddit: "Reddit", youtube: "YouTube", linkedin: "LinkedIn" };
 
   async function getSettings() {
     const { settings = {} } = await chrome.storage.local.get("settings");
-    return { ...judge.DEFAULT_SETTINGS, ...settings };
+    const merged = { ...judge.DEFAULT_SETTINGS, ...settings };
+    merged.topics = T.migrate(merged);
+    return merged;
   }
   async function saveSettings(patch) {
     const next = { ...(await getSettings()), ...patch };
@@ -29,16 +31,20 @@
   if (adapter) {
     $("site-name").textContent = SITE_NAMES[adapter.site];
     $("site-enabled").checked = !settings.disabledSites.includes(adapter.site);
+    $("site-focus").checked = settings.focusSites.includes(adapter.site);
+    const wanted = T.activeTopics(settings, adapter.site).filter((t) => T.WANTED.has(t.action));
+    if (!wanted.length) { $("site-focus").disabled = true; $("focus-note").textContent = "needs a Keep or Highlight topic first"; }
     chrome.tabs.sendMessage(tab.id, { type: "health" }, (health) => {
       if (chrome.runtime.lastError || !health) { $("site-health").textContent = "Reload the page to start filtering."; return; }
       $("site-health").textContent = health.seen
-        ? `${health.seen} posts found · ${health.hidden} hidden · ${health.dimmed} dimmed`
+        ? `${health.seen} posts found · ${health.hidden} hidden · ${health.marked} marked${health.filtered ? ` · ${health.filtered} filtered` : ""}`
         : "0 posts found on this page. If this is a feed, the site may have changed its layout.";
     });
   } else {
     $("site-name").textContent = "Not a supported page";
     $("site-health").textContent = "Works on X, YouTube, Reddit, LinkedIn and Hacker News.";
     $("site-enabled").disabled = true;
+    $("site-focus").disabled = true;
   }
 
   const { counters = {} } = await chrome.storage.local.get("counters");
@@ -64,6 +70,12 @@
     const disabled = new Set(settings.disabledSites);
     if (e.target.checked) disabled.delete(adapter.site); else disabled.add(adapter.site);
     saveSettings({ disabledSites: [...disabled] });
+  });
+  $("site-focus").addEventListener("change", async (e) => {
+    settings = await getSettings();
+    const focus = new Set(settings.focusSites);
+    if (e.target.checked) focus.add(adapter.site); else focus.delete(adapter.site);
+    saveSettings({ focusSites: [...focus] });
   });
   const openOptions = (hash) => chrome.tabs.create({ url: chrome.runtime.getURL("src/ui/options.html") + (hash || "") });
   $("open-options").addEventListener("click", () => openOptions());

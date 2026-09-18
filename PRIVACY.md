@@ -7,7 +7,10 @@ Feedwall has no server and collects nothing. This page says exactly what leaves 
 For each post Feedwall judges, one HTTPS request goes to the model endpoint you configured (by default `https://api.typesafe.ai`), authenticated with your own API key. It contains:
 
 - the post's text (clipped to 1,500 characters), the author's display name, the text of a quoted post and a link title if present, and the name of the site;
-- the text of your active rules.
+- the wording of your active topics, including "what counts", "what doesn't count" and any examples you taught them (an example is a clipped copy of a post you chose);
+- your "about you" line, if you wrote one.
+
+"Test it" sends the same things for up to 60 of your recently seen posts, with only the draft topic as the question.
 
 Nothing else is sent, and nothing is sent anywhere else. There are no analytics, no error reporting, and no update pings beyond the browser's normal extension updates.
 
@@ -20,6 +23,7 @@ Stored in `chrome.storage.local`, readable only by this extension:
 - your settings and API key;
 - a cache of decisions (a hash of the post and the probabilities returned, not the post text);
 - the last 300 hidden posts (text clipped to 280 characters) so you can review them;
+- the last 200 posts you scrolled past (text clipped to 400 characters) so "Test it" has real posts to run on; "Forget recent posts" on the settings page deletes them;
 - your "right / wrong / missed" marks, including the text of the posts you marked;
 - today's counters (posts judged, hidden, tokens used).
 
@@ -29,6 +33,8 @@ Removing the extension deletes all of it. "Clear list" on the settings page dele
 
 Direct messages, compose boxes, settings, login and checkout pages. Each site adapter lists the paths it refuses to run on. Feedwall only runs on the sites listed in `manifest.json`.
 
-## Exports
+## Exports and sets
 
 The export buttons create files on your computer containing the posts you marked. They are not uploaded anywhere.
+
+A set code contains your "about you" line and your topics, including any examples you taught them. Read it before you share it. An imported set is treated as plain text: it is previewed before it is applied, its strings are clipped, and unknown actions are dropped.

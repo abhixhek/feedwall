@@ -23,14 +23,14 @@
 <div id="feed"></div>
 <div id="hud">loading…</div>
 
-<script src="../../src/core/rules.js"></script>
+<script src="../../src/core/topics.js"></script>
 <script src="../../src/core/judge.js"></script>
 <script src="../../src/core/stats.js"></script>
 <script src="../../src/content/adapters/sites.js"></script>
 <script>
   const params = new URLSearchParams(location.search);
   const SITE = params.get("site") || "x";
-  const { rules, judge, stats, sites } = FW;
+  const { topics: T, judge, stats, sites } = FW;
 
   const POSTS = [
     ["Dana Builds", "Shipped dark mode today. The hard part was 40 hard-coded hex values in the chart component. Replaced them with CSS variables; diff is 212 lines."],
@@ -50,28 +50,33 @@
     if (/brain-dead idiot/i.test(text)) p.rage_bait = 0.93;
     if (/7 habits|journey/i.test(text)) p.ai_slop = 0.86;
     if (/borderline hook/i.test(text)) p.engagement_bait = 0.68;
+    if (/launched our|shipped dark mode|benchmarked/i.test(text)) p.indie_building = 0.92;
+    if (/launched our/i.test(text)) p.hard_sell = 0.88; // a launch that also smells like a pitch: "keep" must win
     return p;
   }
 
-  const store = { settings: { ...judge.DEFAULT_SETTINGS, apiKey: "harness", blurUntilJudged: params.get("blur") === "1" }, feedback: [] };
-  const log = { judged: 0, hidden: 0, dimmed: 0, feedback: 0 };
-  const hud = () => (document.getElementById("hud").textContent = `harness · ${SITE} · judged ${log.judged} · hidden ${log.hidden} · dimmed ${log.dimmed} · marks ${log.feedback}`);
+  const store = { settings: { ...judge.DEFAULT_SETTINGS, apiKey: "harness", blurUntilJudged: params.get("blur") === "1",
+    focusSites: params.get("focus") === "1" ? [SITE] : [],
+    topics: [T.fromLibrary("engagement_bait"), T.fromLibrary("rage_bait"), T.fromLibrary("ai_slop"), T.fromLibrary("hard_sell"), T.fromLibrary("indie_building", "keep")] }, feedback: [], examples: [] };
+  const log = { judged: 0, hide: 0, dim: 0, keep: 0, highlight: 0, filter: 0, feedback: 0 };
+  const hud = () => (document.getElementById("hud").textContent = `harness · ${SITE} · judged ${log.judged} · hidden ${log.hide} · dimmed ${log.dim} · kept ${log.keep + log.highlight} · filtered ${log.filter} · marks ${log.feedback}`);
+  window.__store = store;
 
   window.chrome = {
     runtime: {
       lastError: undefined,
       onMessage: { addListener() {} },
       sendMessage(message, reply) {
-        const active = rules.activeRules(store.settings);
+        const active = T.activeTopics(store.settings, SITE);
         setTimeout(() => {
           if (message.type === "getSettings") { const { apiKey, ...safe } = store.settings; return reply({ ...safe, hasKey: true }); }
-          if (message.type === "activeRules") return reply(active.map((r) => ({ id: r.id, label: r.label })));
+          if (message.type === "addExample") { store.examples.push(message); return reply({ ok: true }); }
           if (message.type === "feedback") { store.feedback = stats.addFeedback(store.feedback, message.entry); log.feedback = store.feedback.length; hud(); return reply({ ok: true }); }
           if (message.type === "judge") {
             if (!judge.isJudgeable(message.item)) return reply({ action: "show", reason: "too_short" });
-            const decision = judge.decide(fakeModel(message.item.text, active.map((r) => r.id)), store.settings);
-            log.judged++; if (decision.action === "hide") log.hidden++; if (decision.action === "dim") log.dimmed++; hud();
-            reply({ ...decision, key: rules.hashString(message.item.text) });
+            const decision = judge.decide(fakeModel(message.item.text, active.map((t) => t.id)), active, store.settings, SITE);
+            log.judged++; log[decision.action] = (log[decision.action] || 0) + 1; hud();
+            reply({ ...decision, key: T.hashString(message.item.text) });
           }
         }, message.type === "judge" ? 350 : 0); // roughly Jev's latency
       },

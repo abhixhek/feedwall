@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Feedwall settings</title>
   <link rel="stylesheet" href="ui.css">
-  <style>main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; } header { margin-bottom: 18px; }</style>
+  <style>main { max-width: 800px; margin: 0 auto; padding: 28px 16px 60px; } header { margin-bottom: 18px; }</style>
 </head>
 <body>
 <main>
   <header>
     <h1>Feedwall</h1>
-    <p class="muted">Say what you don't want to see. Everything hidden stays one click away.</p>
+    <p class="muted">Your feed, your rules. Say what you want more of and what you want gone. Everything stays one click away.</p>
   </header>
 
   <section class="card">
     <h2>Your TypeSafe API key</h2>
-    <p class="muted">Feedwall has no server. Post text goes from your browser straight to TypeSafe under your own key, and nowhere else. The key is stored only in this browser.</p>
+    <p class="muted">Feedwall has no server. Post text and your topics go from your browser straight to TypeSafe under your own key, and nowhere else. The key is stored only in this browser.</p>
     <div class="row">
       <input type="password" id="api-key" placeholder="Paste your key" autocomplete="off" spellcheck="false">
       <button class="primary" id="save-key">Save and test</button>
@@ -25,29 +25,82 @@
   </section>
 
   <section class="card">
-    <h2>What to hide</h2>
-    <div id="presets"></div>
-    <h2 style="margin-top:14px">Your own rules</h2>
-    <p class="muted">Describe the kind of post. One thing per rule.</p>
-    <div class="row">
-      <input type="text" id="custom-text" placeholder="e.g. posts hyping a product launch countdown" maxlength="160">
-      <button id="add-custom">Add rule</button>
+    <h2>About you <span class="muted">(optional)</span></h2>
+    <p class="muted">One or two lines of background. It is sent once with each post, so every topic can take it into account.</p>
+    <div class="row"><input type="text" id="about-me" maxlength="300" placeholder="e.g. I build small iOS apps on my own and care about launches, pricing and honest numbers"></div>
+  </section>
+
+  <section class="card">
+    <div class="row between"><h2>Your topics</h2><span class="muted" id="cost-note"></span></div>
+    <p class="muted">Each topic is a question asked of every post. Choose what happens when a post fits. <strong>Keep</strong> always wins, then <strong>Hide</strong>, then <strong>Dim</strong>, then <strong>Highlight</strong>.</p>
+    <div id="topics"></div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" id="new-topic">New topic</button>
+      <select id="library"><option value="">Add from the starter library…</option></select>
     </div>
-    <div id="custom-lint" class="warn" style="font-size:13px;margin-top:6px"></div>
-    <div id="customs" style="margin-top:6px"></div>
+  </section>
+
+  <section class="card" id="editor" hidden>
+    <h2 id="editor-title">New topic</h2>
+    <div class="field"><label for="t-name">Name</label><input type="text" id="t-name" maxlength="60" placeholder="Indie building"></div>
+    <div class="field"><label for="t-description">What are these posts? <span class="muted">One thing, described plainly.</span></label>
+      <input type="text" id="t-description" maxlength="300" placeholder="Posts about building, launching or pricing a small software product">
+      <div id="t-lint" class="warn small-text"></div></div>
+    <div class="field"><label for="t-counts">What counts <span class="muted">(optional, but it helps a lot)</span></label>
+      <input type="text" id="t-counts" maxlength="300" placeholder="Build logs, launch write-ups, revenue numbers, pricing experiments"></div>
+    <div class="field"><label for="t-not">What doesn't count <span class="muted">(the near-misses)</span></label>
+      <input type="text" id="t-not" maxlength="300" placeholder="Generic motivation, course ads, big-company news"></div>
+    <div class="row" style="gap:16px">
+      <div class="field" style="flex:1"><label for="t-action">When a post fits</label>
+        <select id="t-action">
+          <option value="keep">Keep: mark it and never hide it</option>
+          <option value="highlight">Highlight: mark it</option>
+          <option value="dim">Dim it</option>
+          <option value="hide">Hide it</option>
+        </select></div>
+      <div class="field" style="flex:1"><label for="t-threshold">How sure it must be</label>
+        <select id="t-threshold">
+          <option value="">Follow the strictness slider</option>
+          <option value="0.5">50%: catch more, more mistakes</option>
+          <option value="0.6">60%</option><option value="0.7">70%</option><option value="0.8">80%</option>
+          <option value="0.9">90%</option><option value="0.95">95%: only obvious cases</option>
+        </select></div>
+    </div>
+    <div class="field"><label>Where</label><div class="row" id="t-sites"></div></div>
+    <div class="field" id="t-examples-wrap" hidden><label>Examples you taught it</label><div id="t-examples"></div></div>
+    <div class="row between" style="margin-top:6px">
+      <div class="row"><button class="primary" id="t-save">Save topic</button><button id="t-test">Test it on my recent posts</button><button id="t-cancel">Cancel</button></div>
+      <button id="t-delete" class="bad" hidden>Delete</button>
+    </div>
+    <div id="t-test-out" style="margin-top:12px"></div>
+  </section>
+
+  <section class="card">
+    <h2>Sets</h2>
+    <p class="muted">A set is your "about you" line plus your topics. Start from one of these, or share yours as a code anyone can paste.</p>
+    <div class="row" id="built-in-sets"></div>
+    <div class="row" style="margin-top:10px">
+      <button id="export-set">Copy my set as a code</button>
+      <input type="text" id="import-code" placeholder="Paste a set code (feedwall:v1:…)" spellcheck="false">
+      <button id="import-set">Preview</button>
+    </div>
+    <div id="set-preview" style="margin-top:10px"></div>
   </section>
 
   <section class="card">
     <h2>How it behaves</h2>
     <div class="row between" style="padding:4px 0">
-      <span>Strictness</span>
+      <span>Strictness <span class="muted">(for topics without their own setting)</span></span>
       <select id="strictness">
-        <option value="relaxed">Relaxed: hide only obvious cases (90%+)</option>
+        <option value="relaxed">Relaxed: only obvious cases (90%+)</option>
         <option value="balanced">Balanced (75%+)</option>
-        <option value="strict">Strict: hide more (60%+)</option>
+        <option value="strict">Strict: catch more (60%+)</option>
       </select>
     </div>
-    <label class="check"><input type="checkbox" id="dim"> <span>Dim posts it is unsure about<br><span class="muted">Instead of hiding or ignoring the borderline ones.</span></span></label>
+    <div class="field" style="margin-top:6px"><label>Focus mode <span class="muted">Show only posts that fit a Keep or Highlight topic. The rest are counted, and one click peeks at them.</span></label>
+      <div class="row" id="focus-sites"></div>
+      <p class="muted" style="margin:4px 0 0">It can only filter what the site already loaded, so a focused feed is shorter and you will scroll more.</p></div>
+    <label class="check"><input type="checkbox" id="dim"> <span>Dim posts that nearly fit a Hide topic<br><span class="muted">Instead of ignoring the borderline ones.</span></span></label>
     <label class="check"><input type="checkbox" id="blur"> <span>Blur posts until they are judged<br><span class="muted">No flash of unwanted posts on fast scrolls. Posts un-blur in under a second.</span></span></label>
     <div class="row between" style="padding:4px 0">
       <span>Daily request limit <span class="muted">(filtering pauses when reached)</span></span>
@@ -57,7 +110,7 @@
 
   <section class="card" id="review">
     <div class="row between"><h2>How is it doing?</h2><span class="muted" id="report-note"></span></div>
-    <p class="muted">Built from your "Right", "Wrong" and "Hide like this" marks. A rule needs about 8 marks before Feedwall suggests a change.</p>
+    <p class="muted">Built from your "Right", "Wrong" and "This post fits…" marks. A topic needs about 8 marks before Feedwall suggests a change.</p>
     <div id="report"></div>
   </section>
 
@@ -68,12 +121,12 @@
   </section>
 
   <section class="card">
-    <h2>Export your marks</h2>
-    <p class="muted">Downloads your marked posts and active rules in <a href="https://github.com/abhixhek/jevcal">jevcal</a>'s format, so you can compute exact thresholds for a target accuracy. The files contain the post text you marked.</p>
-    <div class="row"><button id="export-rows">Download data.jsonl</button><button id="export-questions">Download questions.yaml</button></div>
+    <h2>Your data</h2>
+    <p class="muted">Feedwall keeps the last 200 posts you scrolled past (text only, in this browser) so "Test it" has something real to run on. Exports are in <a href="https://github.com/abhixhek/jevcal">jevcal</a>'s format, for computing exact thresholds.</p>
+    <div class="row"><button id="export-rows">Download marks (data.jsonl)</button><button id="export-questions">Download topics (questions.yaml)</button><button id="clear-seen">Forget recent posts</button></div>
   </section>
 </main>
-<script src="../core/rules.js"></script>
+<script src="../core/topics.js"></script>
 <script src="../core/judge.js"></script>
 <script src="../core/stats.js"></script>
 <script src="options.js"></script>

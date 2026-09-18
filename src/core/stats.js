@@ -1,4 +1,4 @@
-// The accuracy loop: the reader's "right / wrong / missed" marks become a per-rule report and a threshold suggestion.
+// The accuracy loop: the reader's "right / wrong / missed" marks become a per-topic report and a threshold suggestion.
 (function (root) {
   "use strict";
 
@@ -6,21 +6,23 @@
   const TARGET_WRONG_RATE = 0.1;
   const MAX_FEEDBACK = 2000;
 
+  const idOf = (f) => f.topicId || f.ruleId; // v0.1 marks used ruleId
+
   function addFeedback(list, entry) {
-    const next = list.filter((f) => f.key !== entry.key || f.ruleId !== entry.ruleId);
+    const next = list.filter((f) => f.key !== entry.key || idOf(f) !== idOf(entry));
     next.push(entry);
     return next.slice(-MAX_FEEDBACK);
   }
 
-  // verdicts: "right" (hidden, correctly) | "wrong" (hidden, should not have been) | "missed" (shown, should have been hidden)
-  function ruleReport(feedback, ruleId, currentThreshold) {
-    const marks = feedback.filter((f) => f.ruleId === ruleId);
+  // verdicts: "right" (matched, correctly) | "wrong" (matched, should not have) | "missed" (not matched, should have)
+  function topicReport(feedback, topicId, currentThreshold) {
+    const marks = feedback.filter((f) => idOf(f) === topicId);
     const right = marks.filter((f) => f.verdict === "right");
     const wrong = marks.filter((f) => f.verdict === "wrong");
     const missed = marks.filter((f) => f.verdict === "missed");
     const hidden = right.length + wrong.length;
     const report = {
-      ruleId, right: right.length, wrong: wrong.length, missed: missed.length,
+      topicId, right: right.length, wrong: wrong.length, missed: missed.length,
       wrongRate: hidden ? wrong.length / hidden : null,
       suggestion: null,
     };
@@ -32,15 +34,15 @@
         const keptRight = right.filter((f) => f.p >= t).length;
         const keptWrong = wrong.filter((f) => f.p >= t).length;
         if (keptRight + keptWrong >= 3 && keptWrong / (keptRight + keptWrong) <= TARGET_WRONG_RATE && t > currentThreshold) {
-          report.suggestion = { threshold: Math.min(0.99, Math.round(t * 100) / 100), reason: "too many wrong hides at the current level" };
+          report.suggestion = { threshold: Math.min(0.99, Math.round(t * 100) / 100), reason: "too many wrong matches at the current level" };
           break;
         }
       }
-      if (!report.suggestion) report.suggestion = { rewrite: true, reason: "wrong at every confidence level: the rule wording is the problem, not the threshold" };
+      if (!report.suggestion) report.suggestion = { rewrite: true, reason: "wrong at every confidence level: the wording is the problem, not the threshold" };
     } else if (missed.length >= 3 && wrong.length === 0) {
       const lowest = Math.min(...missed.map((f) => (typeof f.p === "number" ? f.p : currentThreshold)));
       const t = Math.max(0.5, Math.round(Math.min(currentThreshold - 0.05, lowest) * 100) / 100);
-      if (t < currentThreshold) report.suggestion = { threshold: t, reason: "it keeps missing posts you wanted hidden and has not been wrong yet" };
+      if (t < currentThreshold) report.suggestion = { threshold: t, reason: "it keeps missing posts that fit and has not been wrong yet" };
     }
     return report;
   }
@@ -51,24 +53,25 @@
     for (const f of feedback) {
       if (!f.state) continue;
       const row = rows.get(f.key) || { id: f.key, state: f.state, labels: {} };
-      row.labels[f.ruleId] = f.verdict !== "wrong";
+      row.labels[idOf(f)] = f.verdict !== "wrong";
       rows.set(f.key, row);
     }
     return [...rows.values()];
   }
 
-  function toJevcalQuestionsYaml(rules, model) {
+  // `questions` is the map the model is sent: { topicId: { type, instructions, criteria? } }
+  function toJevcalQuestionsYaml(questions, model) {
     const lines = [`model: ${model}`, "", "questions:"];
-    for (const rule of rules) {
-      lines.push(`  ${rule.id}:`, "    type: noul", `    instructions: ${JSON.stringify(rule.instructions)}`);
-      if (rule.criteria) {
-        lines.push("    criteria:", `      "true": ${JSON.stringify(rule.criteria.true)}`, `      "false": ${JSON.stringify(rule.criteria.false)}`);
+    for (const [id, question] of Object.entries(questions)) {
+      lines.push(`  ${id}:`, "    type: noul", `    instructions: ${JSON.stringify(question.instructions)}`);
+      if (question.criteria) {
+        lines.push("    criteria:", `      "true": ${JSON.stringify(question.criteria.true)}`, `      "false": ${JSON.stringify(question.criteria.false)}`);
       }
     }
     return lines.join("\n") + "\n";
   }
 
-  const api = { MIN_MARKS, TARGET_WRONG_RATE, addFeedback, ruleReport, toJevcalRows, toJevcalQuestionsYaml };
+  const api = { MIN_MARKS, TARGET_WRONG_RATE, addFeedback, topicReport, toJevcalRows, toJevcalQuestionsYaml };
   root.FW = Object.assign(root.FW || {}, { stats: api });
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

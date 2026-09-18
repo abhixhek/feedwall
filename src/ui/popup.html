@@ -22,6 +22,9 @@
       <div><strong id="site-name">This site</strong><div class="muted" id="site-health"></div></div>
       <label class="row" style="gap:6px"><input type="checkbox" id="site-enabled"> <span class="muted">Filter here</span></label>
     </div>
+    <label class="row" style="gap:8px;margin-top:10px" title="Show only posts that fit a Keep or Highlight topic">
+      <input type="checkbox" id="site-focus"> <span><strong>Focus mode</strong> <span class="muted" id="focus-note">only what I asked for</span></span>
+    </label>
   </div>
 
   <div class="card">
@@ -43,9 +46,9 @@
 
   <div class="row between">
     <button id="open-review">Review what was hidden</button>
-    <button id="open-options">Rules and settings</button>
+    <button id="open-options">Topics and settings</button>
   </div>
-  <script src="../core/rules.js"></script>
+  <script src="../core/topics.js"></script>
   <script src="../core/judge.js"></script>
   <script src="../content/adapters/sites.js"></script>
   <script src="popup.js"></script>

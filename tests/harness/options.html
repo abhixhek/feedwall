@@ -2,15 +2,21 @@
 <!-- Renders the real options page against an in-memory chrome.storage seeded with sample history. -->
 <html lang="en">
 <head><meta charset="utf-8"><title>Feedwall options harness</title><link rel="stylesheet" href="../../src/ui/ui.css">
-<style>main { max-width: 760px; margin: 0 auto; padding: 28px 16px 60px; } header { margin-bottom: 18px; }</style></head>
+<style>main { max-width: 800px; margin: 0 auto; padding: 28px 16px 60px; } header { margin-bottom: 18px; }</style></head>
 <body>
 <script>
 (async () => {
-  const mark = (key, p, verdict, ruleId, text) => ({ key, p, verdict, ruleId, site: "x", state: { site: "x", text } });
-  const hidden = (key, ruleId, ruleLabel, p, author, text) => ({ key, ruleId, ruleLabel, p, author, text, site: "x", ts: Date.now(), state: { site: "x", text } });
+  const mark = (key, p, verdict, topicId, text) => ({ key, p, verdict, topicId, site: "x", state: { site: "x", text } });
+  const hidden = (key, topicId, topicName, p, author, text) => ({ key, topicId, topicName, p, author, text, site: "x", ts: Date.now(), state: { site: "x", text } });
   const store = {
-    settings: { apiKey: "seeded", enabledPresets: ["engagement_bait", "rage_bait", "ai_slop"], customRules: [
-      { id: "custom_demo", label: "posts hyping a product launch countdown", custom: true, instructions: 'Does this post match this description: "posts hyping a product launch countdown"?', criteria: null } ] },
+    settings: { apiKey: "seeded", aboutMe: "I build small iOS apps on my own.", focusSites: [],
+      topics: [
+        { id: "indie_building", name: "Indie building", action: "keep", description: "Is this post about building, launching, pricing, or marketing a small software product?",
+          counts: "Build logs, launch write-ups, revenue numbers.", notCounts: "Generic motivation, course ads.", examples: { yes: ["Hit $1k MRR with my habit tracker after raising the price from $3 to $5"], no: [] } },
+        { id: "engagement_bait", name: "Engagement bait", action: "hide", description: "Is this post engagement bait?", counts: "Comment X and I will DM you.", notCounts: "A real opinion or update." },
+        { id: "ai_slop", name: "Generic filler", action: "hide", description: "Is this post generic filler with nothing specific in it?", threshold: 0.75 },
+        { id: "politics", name: "Politics", action: "dim", description: "Is this post about partisan politics?", sites: ["x", "reddit"], enabled: false },
+      ] },
     recent: [
       hidden("k1", "engagement_bait", "Engagement bait", 0.97, "Growth Guru", "Comment 'GUIDE' below and I'll DM you my 47-page playbook for free."),
       hidden("k2", "ai_slop", "Generic filler", 0.78, "Dana Builds", "Three things I learned shipping dark mode: tokens first, screenshots in CI, and never trust a hex value."),
@@ -31,13 +37,18 @@
     }, onChanged: { addListener: (fn) => listeners.push(fn) } },
     runtime: { sendMessage: async (message) => {
       if (message.type === "feedback") store.feedback = FW.stats.addFeedback(store.feedback, message.entry);
+      if (message.type === "testTopic") {
+        const posts = [["Launched my habit tracker today: $5/month, 40 paying users in the first week. Full numbers inside.", 0.96], ["Raised prices from $3 to $5 and churn did not move. Notes on what I tested.", 0.91],
+          ["Hot take: most indie hackers should just get a job.", 0.58], ["Comment GUIDE and I will DM you my 47-page playbook.", 0.12], ["Anyone know a good way to debounce scroll handlers?", 0.04]];
+        return { results: posts.map(([text, p], i) => ({ key: "s" + i, p, text, site: "x", author: "someone", state: { site: "x", text } })), failed: 0, tokens: 900, threshold: 0.75 };
+      }
       return { ok: true };
     } },
   };
   const html = await (await fetch("../../src/ui/options.html")).text();
   const doc = new DOMParser().parseFromString(html, "text/html");
   document.body.append(...doc.body.querySelectorAll("main"));
-  for (const src of ["core/rules.js", "core/judge.js", "core/stats.js", "ui/options.js"]) {
+  for (const src of ["core/topics.js", "core/judge.js", "core/stats.js", "ui/options.js"]) {
     await new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = "../../src/" + src; s.onload = resolve; s.onerror = reject; document.body.append(s); });
   }
 })();

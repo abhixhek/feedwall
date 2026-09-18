@@ -1,4 +1,4 @@
-// Content script: finds posts, asks the background worker for a decision, and collapses or dims them.
+// Content script: finds posts, asks the background worker for a decision, and applies it to the page.
 // It never sees the API key and never makes network requests itself.
 (function () {
   "use strict";
@@ -8,12 +8,12 @@
   const MEMO_MAX = 600;
 
   let settings = null;
-  let ruleLabels = {};
-  const health = { site: null, seen: 0, judged: 0, hidden: 0, dimmed: 0, errors: 0 };
+  let topicsById = {};
+  const health = { site: null, seen: 0, judged: 0, hidden: 0, dimmed: 0, marked: 0, filtered: 0, errors: 0 };
 
   // Decisions already made on this page, keyed by post text. React-driven sites (X) throw post elements away and
-  // rebuild them while you scroll; remembering the decision lets a rebuilt post collapse again at once, with no
-  // request and no flash.
+  // rebuild them while you scroll; remembering the decision lets a rebuilt post get the same treatment at once,
+  // with no request and no flash.
   const memo = new Map();
   const memoKey = (item) => item.site + "|" + (item.text || "").slice(0, 1500);
   function remember(item, decision) {
@@ -35,11 +35,13 @@
 
   async function refreshSettings() {
     settings = (await send({ type: "getSettings" })) || { enabled: false };
-    const active = (await send({ type: "activeRules" })) || [];
-    ruleLabels = Object.fromEntries(active.map((r) => [r.id, r.label]));
+    topicsById = Object.fromEntries((settings.topics || []).map((t) => [t.id, t]));
   }
 
   const siteEnabled = (a) => settings && settings.enabled && settings.hasKey && !(settings.disabledSites || []).includes(a.site);
+  const topicsHere = (a) => (settings.topics || []).filter((t) => t.enabled !== false && (!t.sites || t.sites.includes(a.site)));
+  const nameOf = (id) => (topicsById[id] ? topicsById[id].name : id);
+  const pct = (p) => (typeof p === "number" ? ` · ${Math.round(p * 100)}%` : "");
 
   function button(label, title, onClick) {
     const el = document.createElement("button");
@@ -59,66 +61,85 @@
     }
   }
 
+  const mark = (item, decision, verdict, topicId) => send({ type: "feedback", entry: {
+    key: decision.key || "mark-" + Date.now(), topicId: topicId || decision.topicId, p: typeof decision.p === "number" ? decision.p : null,
+    verdict, site: item.site, state: { site: item.site, text: item.text } } });
+
   // State lives in data attributes, never classes: React rewrites className on every re-render and would silently
   // undo a class while leaving our bar in place.
   function clearMarks(el) {
     const a = adapter();
     const targets = a && a.hideTargets ? a.hideTargets(el) : [el];
-    targets.forEach((t) => t.removeAttribute("data-fw-gone"));
+    targets.forEach((t) => { t.removeAttribute("data-fw-gone"); t.removeAttribute("data-fw-filtered"); });
     el.querySelectorAll(":scope > .fw-bar").forEach((bar) => bar.remove());
     if (el._fwBarMount) { el._fwBarMount.remove(); el._fwBarMount = null; }
-    el.removeAttribute("data-fw-note");
-    el.removeAttribute("data-fw-reason");
+    for (const name of ["data-fw-note", "data-fw-reason"]) el.removeAttribute(name);
     if ((el.title || "").startsWith("Feedwall:")) el.removeAttribute("title");
   }
 
-  function expand(el) {
-    clearMarks(el);
-    el.setAttribute("data-fw-state", "shown");
-  }
-
-  function collapse(el, item, decision, label) {
+  function mountBar(el, bar, goneAttribute) {
     const a = adapter();
-    clearMarks(el);
-    const bar = document.createElement("div");
-    bar.className = "fw-bar";
-    const summary = document.createElement("span");
-    summary.className = "fw-bar-text";
-    const pct = typeof decision.p === "number" ? ` · ${Math.round(decision.p * 100)}%` : "";
-    summary.textContent = `Hidden · ${label}${pct}`;
-    const keepShown = () => { remember(item, { action: "show", reason: "reader" }); expand(el); };
-    bar.append(
-      summary,
-      button("Show", "Show this post", keepShown),
-      button("Wrong?", "This should not have been hidden", () => {
-        send({ type: "feedback", entry: { key: decision.key, ruleId: decision.ruleId, p: decision.p, verdict: "wrong", site: item.site, state: { site: item.site, text: item.text } } });
-        keepShown();
-      })
-    );
     if (a && a.mountBar) {
       el._fwBarMount = a.mountBar(el, bar);
-      a.hideTargets(el).forEach((t) => t.setAttribute("data-fw-gone", "1"));
+      a.hideTargets(el).forEach((t) => t.setAttribute(goneAttribute, "1"));
     } else {
       el.prepend(bar);
       el._fwBarMount = bar;
     }
+  }
+
+  function showAnyway(el, item) {
+    remember(item, { action: "show", reason: "reader" });
+    clearMarks(el);
+    el.setAttribute("data-fw-state", "shown");
+    updateFocusChip();
+  }
+
+  function collapse(el, item, decision) {
+    const bar = document.createElement("div");
+    bar.className = "fw-bar";
+    const summary = document.createElement("span");
+    summary.className = "fw-bar-text";
+    summary.textContent = `Hidden · ${nameOf(decision.topicId)}${pct(decision.p)}`;
+    bar.append(
+      summary,
+      button("Show", "Show this post", () => showAnyway(el, item)),
+      button("Wrong?", "This should not have been hidden", () => { mark(item, decision, "wrong"); showAnyway(el, item); })
+    );
+    mountBar(el, bar, "data-fw-gone");
     el.setAttribute("data-fw-state", "hidden");
+  }
+
+  // Focus mode removes most of a feed, so it leaves no bar per post. One chip counts them and "Peek" shows them dimmed.
+  function filterOut(el) {
+    const a = adapter();
+    (a && a.hideTargets ? a.hideTargets(el) : [el]).forEach((t) => t.setAttribute("data-fw-filtered", "1"));
+    el.setAttribute("data-fw-state", "filtered");
   }
 
   function apply(el, item, decision) {
     el._fwDecision = decision;
-    const label = ruleLabels[decision.ruleId] || decision.ruleId;
-    if (decision.action === "hide") return collapse(el, item, decision, label);
     clearMarks(el);
-    if (decision.action === "dim") {
-      const note = `maybe ${label} · ${Math.round(decision.p * 100)}%`;
-      el.setAttribute("data-fw-state", "dim");
-      el.setAttribute("data-fw-note", note);
-      el.title = `Feedwall: ${note}`;
-      return;
+    const name = nameOf(decision.topicId);
+    switch (decision.action) {
+      case "hide": collapse(el, item, decision); break;
+      case "filter": filterOut(el); break;
+      case "keep":
+      case "highlight":
+        el.setAttribute("data-fw-state", "marked");
+        el.setAttribute("data-fw-note", `${decision.action === "keep" ? "★ kept" : "★"} ${name}${pct(decision.p)}`);
+        el.title = `Feedwall: fits "${name}"${pct(decision.p)}`;
+        break;
+      case "dim":
+        el.setAttribute("data-fw-state", "dim");
+        el.setAttribute("data-fw-note", `${decision.near ? "maybe " : ""}${name}${pct(decision.p)}`);
+        el.title = `Feedwall: ${decision.near ? "maybe " : ""}${name}${pct(decision.p)}`;
+        break;
+      default:
+        el.setAttribute("data-fw-state", "shown");
+        if (decision.reason) el.setAttribute("data-fw-reason", String(decision.reason).slice(0, 60)); // why it was let through
     }
-    el.setAttribute("data-fw-state", "shown");
-    if (decision.reason) el.setAttribute("data-fw-reason", String(decision.reason).slice(0, 60)); // why it was let through
+    updateFocusChip();
   }
 
   async function process(el, item) {
@@ -135,6 +156,8 @@
     if (!reason) health.judged++;
     if (decision.action === "hide") health.hidden++;
     if (decision.action === "dim") health.dimmed++;
+    if (decision.action === "filter") health.filtered++;
+    if (decision.action === "keep" || decision.action === "highlight") health.marked++;
     if (reason.startsWith("error")) health.errors++;
     // transient failures are not remembered, so the post gets another chance when it is rebuilt
     if (!/^(error|budget|no_reply)/.test(reason)) remember(item, decision);
@@ -175,51 +198,98 @@
     }
   }
 
-  // "Hide like this": lets the reader record a miss for a rule on any visible post.
-  const missButton = button("Hide like this", "Feedwall missed this one", () => openMissMenu());
-  missButton.classList.add("fw-miss");
-  let missTarget = null;
-  let missMenu = null;
+  // ---- focus chip ---------------------------------------------------------------------------------------------------
+  let chip = null;
+  let filteredTotal = 0;
+  function updateFocusChip() {
+    const a = adapter();
+    const on = a && settings && (settings.focusSites || []).includes(a.site);
+    const nowFiltered = document.querySelectorAll('[data-fw-state="filtered"]').length;
+    filteredTotal = Math.max(filteredTotal, health.filtered, nowFiltered);
+    if (!on || !filteredTotal) { if (chip) { chip.remove(); chip = null; } return; }
+    if (!chip) {
+      chip = document.createElement("div");
+      chip.className = "fw-chip";
+      const label = document.createElement("span");
+      label.className = "fw-chip-text";
+      const peek = button("Peek", "Show what focus mode filtered out, dimmed", () => {
+        const peeking = document.documentElement.toggleAttribute("data-fw-peek");
+        peek.textContent = peeking ? "Hide again" : "Peek";
+      });
+      chip.append(label, peek);
+      document.documentElement.appendChild(chip);
+    }
+    chip.querySelector(".fw-chip-text").textContent = `Focus · ${filteredTotal} filtered`;
+  }
 
-  function openMissMenu() {
-    if (!missTarget) return;
-    const target = missTarget;
-    closeMissMenu();
-    missMenu = document.createElement("div");
-    missMenu.className = "fw-menu";
-    const rect = missButton.getBoundingClientRect();
-    missMenu.style.top = `${rect.bottom + 4}px`;
-    missMenu.style.left = `${Math.max(8, rect.right - 220)}px`;
-    for (const [ruleId, label] of Object.entries(ruleLabels)) {
-      missMenu.appendChild(button(label, `Should have been hidden as: ${label}`, () => {
-        const item = target._fwItem || {};
-        const key = (target._fwDecision && target._fwDecision.key) || "miss-" + Date.now();
-        const decision = { action: "hide", key, ruleId, p: null };
-        send({ type: "feedback", entry: { key, ruleId, p: null, verdict: "missed", site: item.site, state: { site: item.site, text: item.text } } });
-        remember(item, decision);
-        apply(target, item, decision);
-        closeMissMenu();
-        missButton.style.display = "none";
+  // ---- teach menu: tell Feedwall a visible post fits one of your topics ------------------------------------------------
+  const teachButton = button("Feedwall", "Tell Feedwall this post fits one of your topics", () => openMenu());
+  teachButton.classList.add("fw-miss");
+  let target = null;
+  let menu = null;
+
+  function openMenu() {
+    const a = adapter();
+    if (!target || !a) return;
+    const el = target;
+    closeMenu();
+    menu = document.createElement("div");
+    menu.className = "fw-menu";
+    const rect = teachButton.getBoundingClientRect();
+    menu.style.top = `${rect.bottom + 4}px`;
+    menu.style.left = `${Math.max(8, rect.right - 240)}px`;
+
+    const item = el._fwItem || {};
+    const decision = el._fwDecision || {};
+    const heading = document.createElement("div");
+    heading.className = "fw-menu-title";
+    heading.textContent = "This post fits…";
+    menu.appendChild(heading);
+
+    const teach = document.createElement("label");
+    teach.className = "fw-menu-check";
+    const box = document.createElement("input");
+    box.type = "checkbox";
+    teach.append(box, document.createTextNode(" also teach it as an example"));
+
+    for (const topic of topicsHere(a)) {
+      menu.appendChild(button(`${topic.name}  (${topic.action})`, `Mark this post as fitting "${topic.name}"`, () => {
+        mark(item, decision, "missed", topic.id);
+        if (box.checked) send({ type: "addExample", topicId: topic.id, side: "yes", text: item.text });
+        const local = { action: topic.action, key: decision.key, topicId: topic.id, p: null };
+        remember(item, local);
+        apply(el, item, local);
+        closeMenu();
+        teachButton.style.display = "none";
       }));
     }
-    document.documentElement.appendChild(missMenu);
+    if (el.getAttribute("data-fw-state") === "marked" || el.getAttribute("data-fw-state") === "dim") {
+      menu.appendChild(button(`✕ Does not fit "${nameOf(decision.topicId)}"`, "Feedwall got this one wrong", () => {
+        mark(item, decision, "wrong");
+        if (box.checked) send({ type: "addExample", topicId: decision.topicId, side: "no", text: item.text });
+        showAnyway(el, item);
+        closeMenu();
+      }));
+    }
+    menu.appendChild(teach);
+    document.documentElement.appendChild(menu);
   }
-  function closeMissMenu() { if (missMenu) { missMenu.remove(); missMenu = null; } }
+  function closeMenu() { if (menu) { menu.remove(); menu = null; } }
 
   document.addEventListener("mouseover", (event) => {
     const a = adapter();
-    if (!a || !settings || !siteEnabled(a) || (missMenu && missMenu.contains(event.target)) || event.target === missButton) return;
+    if (!a || !settings || !siteEnabled(a) || (menu && menu.contains(event.target)) || event.target === teachButton) return;
     const el = event.target.closest && event.target.closest(a.itemSelector);
     if (!el || !el._fwItem || el.getAttribute("data-fw-state") === "hidden" || el.hasAttribute("data-fw-gone")) return;
-    missTarget = el;
+    target = el;
     const rect = el.getBoundingClientRect();
-    missButton.style.top = `${Math.max(4, rect.top + 6)}px`;
-    missButton.style.left = `${rect.right - 118}px`;
-    if (!missButton.isConnected) document.documentElement.appendChild(missButton);
-    missButton.style.display = "block";
+    teachButton.style.top = `${Math.max(4, rect.top + 6)}px`;
+    teachButton.style.left = `${rect.right - 84}px`;
+    if (!teachButton.isConnected) document.documentElement.appendChild(teachButton);
+    teachButton.style.display = "block";
   }, { passive: true });
-  document.addEventListener("scroll", () => { missButton.style.display = "none"; closeMissMenu(); }, { passive: true, capture: true });
-  document.addEventListener("click", (event) => { if (missMenu && !missMenu.contains(event.target) && event.target !== missButton) closeMissMenu(); });
+  document.addEventListener("scroll", () => { teachButton.style.display = "none"; closeMenu(); }, { passive: true, capture: true });
+  document.addEventListener("click", (event) => { if (menu && !menu.contains(event.target) && event.target !== teachButton) closeMenu(); });
 
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
     if (message && message.type === "health") reply({ ...health, enabled: Boolean(settings && adapter() && siteEnabled(adapter())) });
@@ -228,13 +298,17 @@
   chrome.storage.onChanged.addListener(async (changes, area) => {
     if (area !== "local" || !changes.settings) return;
     await refreshSettings();
-    // rules or thresholds moved: put everything back and judge again (the worker's cache makes this nearly free)
+    // topics, actions or thresholds moved: put everything back and judge again (the worker's cache makes this nearly free)
     memo.clear();
+    filteredTotal = 0;
+    health.filtered = 0;
+    document.documentElement.removeAttribute("data-fw-peek");
     document.querySelectorAll("[data-fw]").forEach((el) => { clearMarks(el); el.removeAttribute("data-fw-state"); el.removeAttribute("data-fw"); });
+    updateFocusChip();
     scan();
   });
 
-  // Scan on the next frame, so a rebuilt post is collapsed again before it is on screen for long. Frames do not fire
+  // Scan on the next frame, so a rebuilt post is treated again before it is on screen for long. Frames do not fire
   // in background tabs, so a short timer backs it up.
   let scheduled = false;
   const observer = new MutationObserver(() => {

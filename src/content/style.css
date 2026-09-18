@@ -2,6 +2,21 @@
 [data-fw-state="hidden"] > *:not(.fw-bar) { display: none !important; }
 [data-fw-gone] { display: none !important; }
 
+/* Focus mode: posts that fit nothing you asked for. Gone by default; "Peek" brings them back, dimmed. */
+[data-fw-state="filtered"], [data-fw-filtered] { display: none !important; }
+html[data-fw-peek] [data-fw-state="filtered"], html[data-fw-peek] [data-fw-filtered] { display: revert !important; opacity: 0.35; }
+html[data-fw-peek] tr[data-fw-state="filtered"], html[data-fw-peek] tr[data-fw-filtered] { display: table-row !important; }
+
+/* Posts that fit a topic you want: a quiet accent on the leading edge and a one-line note. */
+[data-fw-state="marked"] { box-shadow: inset 3px 0 0 #3b82f6; }
+[data-fw-state="marked"][data-fw-note]::before {
+  content: attr(data-fw-note);
+  display: block; flex: 1 0 100%; width: 100%; box-sizing: border-box; padding: 3px 12px 0;
+  font: 600 11px/1.4 system-ui, sans-serif; color: #3b82f6;
+}
+tr[data-fw-state="marked"][data-fw-note]::before { content: none; display: none; }
+tr[data-fw-state="marked"] > td:last-child { box-shadow: inset 3px 0 0 #3b82f6; }
+
 .fw-bar {
   display: flex; align-items: center; gap: 8px;
   /* some hosts (X) lay a post out as a flex row: claim the whole row so the bar never sits beside the post */
@@ -28,7 +43,7 @@
 [data-fw-state="dim"]:hover { opacity: 1; }
 [data-fw-state="dim"][data-fw-note]::before {
   content: attr(data-fw-note);
-  display: block; padding: 2px 12px;
+  display: block; flex: 1 0 100%; width: 100%; box-sizing: border-box; padding: 2px 12px;
   font: 11px/1.4 system-ui, sans-serif; opacity: 0.8;
 }
 
@@ -52,3 +67,14 @@ tr[data-fw-state="dim"][data-fw-note]::before { content: none; display: none; }
   font: 12px system-ui, sans-serif;
 }
 .fw-menu .fw-btn { text-align: left; border-radius: 6px; border-color: transparent; }
+
+.fw-menu-title { font-weight: 600; opacity: 0.7; padding: 2px 6px 4px; }
+.fw-menu-check { display: flex; align-items: center; gap: 6px; padding: 6px 6px 2px; opacity: 0.85; cursor: pointer; border-top: 1px solid rgba(255,255,255,0.15); margin-top: 4px; }
+
+.fw-chip {
+  position: fixed; right: 16px; bottom: 16px; z-index: 2147483645;
+  display: flex; align-items: center; gap: 10px; padding: 7px 8px 7px 14px; border-radius: 999px;
+  color: #fff; background: rgba(20, 20, 20, 0.9); box-shadow: 0 6px 22px rgba(0, 0, 0, 0.3);
+  font: 12px system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+.fw-chip .fw-btn { color: #fff; border-color: rgba(255, 255, 255, 0.35); }

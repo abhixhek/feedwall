@@ -1,6 +1,8 @@
 # Feedwall: product design
 
-One sentence: **tell your browser, in plain English, what you don't want to see; it hides those posts on every feed you use, and shows you when it got it wrong.**
+One sentence: **tell your browser, in plain English, what you want more of and what you want gone; it applies that on every feed you use, and shows you when it got it wrong.**
+
+> v0.2 replaced fixed "rules" with reader-defined **topics**. The sections below describe v0.1's loop, which still holds; the v0.2 additions are at the end.
 
 ## Who it is for
 
@@ -56,3 +58,23 @@ Hosted keys or accounts, mobile, Firefox (the code is portable; the store listin
 2. Latency from far regions (~1 s observed from India) can beat the prefetch margin on fast scrolls. Mitigation: larger margin, optional blur-until-judged.
 3. Users need a TypeSafe key (waitlist). Gateways that serve Jev without a waitlist use a different request shape; add as providers after v0.
 4. No moat. The accuracy loop and cross-site coverage are the reasons to choose it; being open source is the reason to trust it.
+
+## v0.2: the reader defines the classifications
+
+**Why.** The first live run hid generic filler well, and the obvious next question was the inverse: "I care about indie builders; can I say what I *want*?" A want and a don't-want are the same mechanism (a yes/no question with a probability) with a different action attached. So the product became: the reader writes any number of classifications, with context, and chooses what each one does.
+
+| Decision | Choice | Why |
+|---|---|---|
+| Unit | A **topic**: name, description, what counts, what doesn't, up to 3 taught examples per side, an action, sites, its own confidence bar | Maps one-to-one onto a `noul` question: the context goes into `criteria`, which is where the model expects domain rules. |
+| Actions | Keep, Highlight, Dim, Hide | Four verbs cover "protect", "draw my eye", "push down", "remove". |
+| Precedence | Keep > Hide > (focus filter) > Dim > Highlight > near-miss dim | Fixed and documented, so the reader can predict what happens when topics overlap. Keep must beat Hide or a launch post that reads like a pitch disappears. |
+| About you | One optional line, sent once per post in the state | Gives every topic the same background for almost no tokens. |
+| Control | "Test it on my recent posts": run a draft over the last ~60 posts actually seen | The model reads wording literally; seeing real matches before saving is what makes free-text topics usable. Costs a fraction of a cent. |
+| Focus mode | Per-site switch; only posts fitting a wanted topic remain; one chip counts the rest, Peek reveals them | The bold version of "what I want". A counter instead of a wall of bars. It never blanks a feed: no model answer or no wanted topic means it does nothing. |
+| Sets | "About you" + topics, exported as a pasteable code; four built-ins | Sharing a set is how this spreads: "here is my filter for X". No server needed. Imports are sanitized and previewed. |
+| Cache | Keyed on the wording sent to the model, not on actions or confidence bars | Changing what a topic *does* is free; only changing what it *asks* costs a new request. |
+| No LLM helper | The reader writes topics; lint + Test it guide them | A second API key would double the setup. Revisit if people struggle to write topics. |
+
+**Cost reality.** Every topic's wording travels with every post. Measured: five topics with context plus "about you" is about 700 input tokens per post, roughly $0.03 per 1,000 posts. The editor shows a live estimate so nobody is surprised.
+
+**Open issues.** X's virtualized list can keep stale spacing after a collapse; focus mode removes most posts, so it stresses exactly that. Reddit selectors are unverified. Both need a human on the live sites.

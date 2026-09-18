@@ -40,3 +40,13 @@ button.small { padding: 2px 9px; font-size: 12px; border-radius: 999px; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
 th, td { text-align: left; padding: 6px 8px; border-top: 1px solid var(--line); }
 th { color: var(--muted); font-weight: 600; border-top: 0; }
+.field { margin: 0 0 10px; display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 13px; font-weight: 600; }
+.field label .muted { font-weight: 400; }
+.field input[type="text"], .field select { width: 100%; }
+.small-text { font-size: 13px; }
+.pill.want { color: var(--accent); border-color: var(--accent); }
+.topic-row.off { opacity: 0.5; }
+.list-item.below { opacity: 0.55; }
+button.bad { color: var(--bad); }
+a { color: var(--accent); }
