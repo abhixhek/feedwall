@@ -122,8 +122,10 @@ async function judgeItem(item) {
     }
     return { ...decision, key };
   } catch (error) {
+    const message = error && error.name === "AbortError" ? "the model took longer than 8 seconds" : (error && error.message) || "unknown";
     await bumpCounters({ requests: 1, errors: 1 });
-    return show("error:" + (error && error.message ? error.message : "unknown"));
+    await serial(() => chrome.storage.local.set({ lastError: { ts: Date.now(), message } })); // failing open must not mean failing silently
+    return show("error:" + message);
   } finally {
     release();
   }

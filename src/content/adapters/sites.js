@@ -4,8 +4,10 @@
 (function (root) {
   "use strict";
 
-  const text = (el) => (el ? (el.innerText || el.textContent || "").trim() : "");
-  const firstLine = (value) => (value || "").split("\n")[0].trim();
+  // textContent, not innerText: innerText is empty for anything we have hidden, so the same post would read
+  // differently before and after it is collapsed.
+  const text = (el) => (el ? (el.textContent || "").replace(/\s+/g, " ").trim() : "");
+  const firstLine = (value) => (value || "").split(/\n| · |@/)[0].trim();
 
   // For web components (Reddit): a child without a slot is never rendered, so the bar sits next to the post instead of inside it.
   const siblingBar = {
@@ -19,6 +21,7 @@
       hosts: ["x.com", "twitter.com"],
       excludePaths: [/^\/messages/, /^\/settings/, /^\/compose/, /^\/i\/flow/, /^\/login/],
       itemSelector: 'article[data-testid="tweet"]',
+      eager: true, // virtualized feed: only posts near the viewport exist in the page
       extract(el) {
         const bodies = el.querySelectorAll('[data-testid="tweetText"]');
         return {

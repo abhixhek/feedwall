@@ -1,6 +1,6 @@
 {
   "name": "feedwall",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Plain-English content filter for feeds, powered by a decision model.",
   "license": "MIT",

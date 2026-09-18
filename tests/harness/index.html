@@ -81,6 +81,8 @@
 
   // Pretend to be the chosen site, whatever host this page is served from.
   sites.adapterFor = () => sites.adapters.find((a) => a.site === SITE);
+  // Visibility observers are paused in hidden tabs; &eager=1 judges everything at once so the bench works headless.
+  if (params.get("eager") === "1") sites.adapters.forEach((a) => (a.eager = true));
 
   const feed = document.getElementById("feed");
   if (SITE === "hackernews") {

@@ -49,7 +49,11 @@
   $("cost").textContent = cost === 0 ? "$0" : cost < 0.01 ? "<1¢" : "$" + cost.toFixed(2);
   const notes = [];
   if (todays.cached) notes.push(`${todays.cached.toLocaleString()} answered from cache for free`);
-  if (todays.errors) notes.push(`${todays.errors} requests failed (those posts were shown)`);
+  const { lastError } = await chrome.storage.local.get("lastError");
+  if (todays.errors) {
+    const recent = lastError && Date.now() - lastError.ts < 24 * 3600 * 1000 ? ` Last error: ${lastError.message}.` : "";
+    notes.push(`${todays.errors} requests failed, so those posts were shown.${recent}`);
+  }
   if ((todays.requests || 0) >= settings.dailyBudget) notes.push("daily budget reached, so filtering is paused until tomorrow");
   $("note").textContent = notes.join(" · ");
 

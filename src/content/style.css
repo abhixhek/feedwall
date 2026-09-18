@@ -1,9 +1,11 @@
 /* Everything Feedwall adds to a page. Colors inherit from the host site so it looks native in light and dark. */
-.fw-collapsed > *:not(.fw-bar) { display: none !important; }
-.fw-gone { display: none !important; }
+[data-fw-state="hidden"] > *:not(.fw-bar) { display: none !important; }
+[data-fw-gone] { display: none !important; }
 
 .fw-bar {
   display: flex; align-items: center; gap: 8px;
+  /* some hosts (X) lay a post out as a flex row: claim the whole row so the bar never sits beside the post */
+  flex: 1 0 100%; width: 100%; box-sizing: border-box;
   padding: 6px 12px; margin: 2px 0;
   font: 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
   color: inherit; opacity: 0.72;
@@ -22,18 +24,18 @@
 }
 .fw-btn:hover { background: color-mix(in srgb, currentColor 12%, transparent); }
 
-.fw-dim { opacity: 0.42; transition: opacity 0.15s; position: relative; }
-.fw-dim:hover { opacity: 1; }
-.fw-dim[data-fw-note]::before {
+[data-fw-state="dim"] { opacity: 0.42; transition: opacity 0.15s; }
+[data-fw-state="dim"]:hover { opacity: 1; }
+[data-fw-state="dim"][data-fw-note]::before {
   content: attr(data-fw-note);
   display: block; padding: 2px 12px;
   font: 11px/1.4 system-ui, sans-serif; opacity: 0.8;
 }
 
 /* a generated block inside a table row becomes a stray cell and shifts the columns, so rows get a tooltip instead */
-tr.fw-dim[data-fw-note]::before { content: none; display: none; }
+tr[data-fw-state="dim"][data-fw-note]::before { content: none; display: none; }
 
-.fw-pending { filter: blur(7px); pointer-events: none; transition: filter 0.12s; }
+[data-fw-pending] { filter: blur(7px); pointer-events: none; transition: filter 0.12s; }
 
 .fw-miss {
   position: fixed; z-index: 2147483646; display: none;
