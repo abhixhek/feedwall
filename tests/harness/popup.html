@@ -1,0 +1,36 @@
+<!doctype html>
+<!-- Renders the real popup against a fake chrome API: popup.html?site=x|linkedin|youtube|hackernews&on=0|1 -->
+<html lang="en">
+<head><meta charset="utf-8"><title>Feedwall popup harness</title><link rel="stylesheet" href="../../src/ui/ui.css"></head>
+<body>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  const urls = { x: "https://x.com/home", linkedin: "https://www.linkedin.com/feed/", youtube: "https://www.youtube.com/", hackernews: "https://news.ycombinator.com/" };
+  const on = q.get("on") !== "0";
+  const store = {
+    settings: { apiKey: "seeded", enabled: on, disabledSites: [], focusSites: [],
+      topics: [{ id: "indie_building", name: "Indie building", action: "keep", description: "Is this post about building a small software product?" },
+               { id: "engagement_bait", name: "Engagement bait", action: "hide", description: "Is this post engagement bait?" }] },
+    counters: { judged: 412, hidden: 96, tokens: 290000, cached: 131, requests: 281 },
+  };
+  window.chrome = {
+    storage: { local: {
+      get: async (keys) => { store.counters.day = globalThis.FW.judge.today(); return Object.fromEntries([].concat(keys).filter((k) => k in store).map((k) => [k, structuredClone(store[k])])); },
+      set: async (patch) => { Object.assign(store, structuredClone(patch)); },
+    } },
+    tabs: { query: async () => [{ id: 1, url: urls[q.get("site")] || urls.x }], create: () => {},
+            sendMessage: (id, message, reply) => reply(on ? { status: "on", seen: 13, hidden: 7, marked: 4, filtered: 0 } : { status: "off" }) },
+    runtime: { getURL: (path) => path, lastError: null },
+  };
+  const html = await (await fetch("../../src/ui/popup.html")).text();
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  document.head.append(...doc.head.querySelectorAll("style"));
+  document.body.append(...[...doc.body.children].filter((el) => el.tagName !== "SCRIPT"));
+  for (const src of ["core/topics.js", "core/judge.js", "content/adapters/sites.js", "ui/popup.js"]) {
+    await new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = "../../src/" + src; s.onload = resolve; s.onerror = reject; document.body.append(s); });
+  }
+})();
+</script>
+</body>
+</html>

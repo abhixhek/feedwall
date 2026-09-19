@@ -38,7 +38,7 @@
     runtime: { sendMessage: async (message) => {
       if (message.type === "feedback") store.feedback = FW.stats.addFeedback(store.feedback, message.entry);
       if (message.type === "testTopic") {
-        const posts = [["Launched my habit tracker today: $5/month, 40 paying users in the first week. Full numbers inside.", 0.96], ["Raised prices from $3 to $5 and churn did not move. Notes on what I tested.", 0.91],
+        const posts = window.__testPosts || [["Launched my habit tracker today: $5/month, 40 paying users in the first week. Full numbers inside.", 0.96], ["Raised prices from $3 to $5 and churn did not move. Notes on what I tested.", 0.91],
           ["Hot take: most indie hackers should just get a job.", 0.58], ["Comment GUIDE and I will DM you my 47-page playbook.", 0.12], ["Anyone know a good way to debounce scroll handlers?", 0.04]];
         return { results: posts.map(([text, p], i) => ({ key: "s" + i, p, text, site: "x", author: "someone", state: { site: "x", text } })), failed: 0, tokens: 900, threshold: 0.75 };
       }

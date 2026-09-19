@@ -2,9 +2,11 @@
 
 **Your feed, your rules, in plain English.** Tell your browser what you want more of and what you want gone. Feedwall applies it on X, YouTube, Reddit, LinkedIn and Hacker News, keeps everything one click away, and shows you when it got it wrong.
 
-[![Feedwall demo: a feed before and after, focus mode, topics, and the test button](docs/demo.gif)](docs/demo.mp4)
+[![Feedwall trailer: switching it on, writing your own topic, testing it, focus mode](docs/trailer.gif)](https://github.com/abhixhek/feedwall/releases/download/v0.2.2/feedwall-trailer.mp4)
 
-*30-second tour. [Full-quality video](docs/demo.mp4). The demo and the screenshots come from the test bench in `tests/harness`, which runs the real content script against a sample feed, so no real posts or accounts appear in them.*
+**[Watch the 78-second trailer, with sound](https://github.com/abhixhek/feedwall/releases/download/v0.2.2/feedwall-trailer.mp4)**
+
+*The trailer and the screenshots are rendered from [`trailer/`](trailer): the popup and the settings page in them are the real ones, run against a fake browser API, and the feeds are sample pages styled with the extension's own stylesheet. Every person, account and number in them is invented, so no real posts appear.*
 
 **Jump to:** [Set it up in five minutes](#set-it-up-in-five-minutes) · [Nothing is happening?](#nothing-is-happening) · [Privacy](#privacy) · [Cost](#cost) · [Status](#status)
 
@@ -22,6 +24,8 @@ A topic is a question asked of every post, written by you, with as much context 
 | **When a post fits** | Keep · Highlight · Dim · Hide |
 | **Where, and how sure** | All sites or some; its own confidence bar |
 
+![The topic list after saving a new topic called "Real revenue numbers"](docs/topics.png)
+
 Add as many as you like. An optional "about you" line gives every topic the same background. There is a starter library (engagement bait, rage bait, politics, generic filler, crypto promotion, hard sell, distressing news, indie building, technical depth, hiring) so you are never starting from a blank page.
 
 When several topics fit the same post, the order is fixed so you can predict it: **Keep** always wins, then **Hide**, then **Dim**, then **Highlight**. A launch post that smells like a sales pitch stays visible if it fits a topic you chose to keep.
@@ -36,13 +40,21 @@ When several topics fit the same post, the order is fixed so you can predict it:
 
 Switch it on per site and only posts that fit a Keep or Highlight topic remain. The rest are counted in one chip, and **Peek** shows them dimmed. It can only filter what the site already loaded, so a focused feed is shorter and you will scroll more. If the model fails or you have no wanted topics, focus mode does nothing: it never blanks a feed.
 
+## The same rules everywhere
+
+| LinkedIn | YouTube |
+|---|---|
+| ![A LinkedIn feed with hustle posts collapsed and hiring posts kept](docs/linkedin.png) | ![A YouTube grid with clickbait dimmed and technical talks marked](docs/youtube.png) |
+
+One set of topics covers X, YouTube, Reddit, LinkedIn and Hacker News, and each topic can be limited to the sites where it makes sense.
+
 ## Sets you can share
 
 A set is your "about you" line plus your topics. Start from a built-in one (Indie builder, Deep work, Job hunt, Research) or copy yours as a code that anyone can paste. Importing always shows a preview first, and everything in a set is treated as plain text.
 
 ## It shows its own mistakes
 
-![Settings: topics with actions, cost estimate, and the editor](docs/settings.png)
+![Test it: a draft topic run over recent posts, scored 97%, 95% and 92%, with Right and Wrong buttons](docs/settings.png)
 
 - **Wrong?** on a hidden post puts it back and records the mistake. The **Feedwall** button on any visible post lets you say "this fits one of my topics", and optionally teach it as an example.
 - **How is it doing?** turns your marks into a per-topic report. Wrong too often at low confidence: it suggests a higher bar for that topic. Wrong at every confidence level: it tells you the wording is the problem.
@@ -126,7 +138,8 @@ src/background.js  holds the key, calls the model, cache, budget, recent-posts b
 src/content/       the page script, styles, and one adapter per site
 src/ui/            popup and settings page
 tests/             unit tests and the visual test bench
-scripts/           rebuilds the demo video from the test bench
+trailer/           the trailer: a page where every frame is a function of time, a renderer, and a synthesized score
+scripts/           one command to rebuild the trailer
 docs/PRODUCT.md    the product design and the reasoning behind each decision
 ```
 
@@ -141,7 +154,8 @@ python3 -m http.server 8000               # then open:
 # http://localhost:8000/tests/harness/index.html?site=x&focus=1
 # http://localhost:8000/tests/harness/index.html?site=hackernews&eager=1
 # http://localhost:8000/tests/harness/options.html
-sh scripts/make_demo.sh                   # rebuilds docs/demo.mp4 and docs/demo.gif (needs Chrome and ffmpeg)
+# http://localhost:8000/tests/harness/popup.html?site=x&on=1
+sh scripts/make_trailer.sh trailer.mp4    # renders the trailer (needs Chrome, Node 22+, ffmpeg and uv; about 3 minutes)
 ```
 
 Fixing a site adapter or adding a new site: [CONTRIBUTING.md](CONTRIBUTING.md).

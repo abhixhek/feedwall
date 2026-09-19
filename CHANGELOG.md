@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- A trailer, built from code: `trailer/` renders every frame through headless Chrome and synthesizes its own score. It replaces the earlier slideshow demo. README screenshots now come from it.
+- A test bench for the popup (`tests/harness/popup.html`).
+
 ## 0.2.2 (2026-09-19)
 
 - The popup now says why nothing is happening on a page: switched off, no key, site switched off, no topics for this site, background worker not answering, or an error. The page script writes the same state to `data-fw-status` on `<html>`.
@@ -8,7 +13,6 @@
 - LinkedIn is off until you switch it on from the popup.
 - Fixed: "Test it" printed the word "null" under the summary; hidden form fields could still show.
 - Removed the unused optional host permission.
-- Demo video, rebuilt from the test bench with `sh scripts/make_demo.sh`.
 
 ## 0.2.1 (2026-09-18)
 
