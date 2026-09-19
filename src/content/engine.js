@@ -34,9 +34,31 @@
   }
 
   async function refreshSettings() {
-    settings = (await send({ type: "getSettings" })) || { enabled: false };
+    // The background worker may still be starting (or restarting after an update), so ask a few times before giving up.
+    let reply = null;
+    for (const delay of [0, 400, 1500]) {
+      if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      reply = await send({ type: "getSettings" });
+      if (reply) break;
+    }
+    settings = reply && !reply.error ? reply : { enabled: false, problem: reply ? "error:" + reply.error : "no_worker" };
     topicsById = Object.fromEntries((settings.topics || []).map((t) => [t.id, t]));
+    reportStatus();
   }
+
+  // One word on <html> that says what Feedwall is doing on this page, so "why is nothing happening?" has an answer
+  // (the popup shows it in plain English).
+  function statusNow() {
+    const a = adapter();
+    if (!a) return "unsupported_page";
+    if (settings.problem) return settings.problem;
+    if (!settings.enabled) return "off";
+    if (!settings.hasKey) return "no_key";
+    if ((settings.disabledSites || []).includes(a.site)) return "site_off";
+    if (!topicsHere(a).length) return "no_topics";
+    return "on";
+  }
+  function reportStatus() { document.documentElement.setAttribute("data-fw-status", statusNow()); }
 
   const siteEnabled = (a) => settings && settings.enabled && settings.hasKey && !(settings.disabledSites || []).includes(a.site);
   const topicsHere = (a) => (settings.topics || []).filter((t) => t.enabled !== false && (!t.sites || t.sites.includes(a.site)));
@@ -292,7 +314,7 @@
   document.addEventListener("click", (event) => { if (menu && !menu.contains(event.target) && event.target !== teachButton) closeMenu(); });
 
   chrome.runtime.onMessage.addListener((message, sender, reply) => {
-    if (message && message.type === "health") reply({ ...health, enabled: Boolean(settings && adapter() && siteEnabled(adapter())) });
+    if (message && message.type === "health") reply({ ...health, status: settings ? statusNow() : "starting", enabled: Boolean(settings && adapter() && siteEnabled(adapter())) });
   });
 
   chrome.storage.onChanged.addListener(async (changes, area) => {

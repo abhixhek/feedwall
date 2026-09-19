@@ -20,9 +20,17 @@ const waiting = [];
 let chain = Promise.resolve();
 const serial = (fn) => (chain = chain.then(fn, fn));
 
+// Stored data comes from older versions and from imports. If any of it is unusable, fall back to the starter topics
+// rather than leaving the extension silently dead.
 function withTopics(stored) {
   const merged = { ...judge.DEFAULT_SETTINGS, ...(stored || {}) };
-  merged.topics = T.migrate(merged);
+  try {
+    merged.topics = T.migrate(merged);
+  } catch (error) {
+    merged.topics = T.migrate({});
+    chrome.storage.local.set({ lastError: { ts: Date.now(), message: "saved topics could not be read, starter topics are in use" } });
+  }
+  for (const key of ["disabledSites", "focusSites"]) if (!Array.isArray(merged[key])) merged[key] = [];
   return merged;
 }
 
@@ -30,8 +38,8 @@ async function load() {
   if (settings && cache && seen) return;
   const stored = await chrome.storage.local.get(["settings", "cache", "seen"]);
   settings = withTopics(stored.settings);
-  cache = stored.cache || {};
-  seen = stored.seen || [];
+  cache = stored.cache && typeof stored.cache === "object" ? stored.cache : {};
+  seen = Array.isArray(stored.seen) ? stored.seen : [];
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {

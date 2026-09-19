@@ -8,6 +8,7 @@
           --good: #4ac26b; --warn: #d4a72c; --bad: #ff7b82; }
 }
 * { box-sizing: border-box; }
+[hidden] { display: none !important; } /* author display rules (e.g. .field) would otherwise beat the hidden attribute */
 body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
 h2 { font-size: 15px; margin: 0 0 4px; }

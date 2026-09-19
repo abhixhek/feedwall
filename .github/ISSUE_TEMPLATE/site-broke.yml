@@ -1,0 +1,36 @@
+name: A site broke
+description: Feedwall stopped finding posts on a site, or it breaks the page layout
+title: "[site] "
+labels: ["site-broke"]
+body:
+  - type: dropdown
+    id: site
+    attributes:
+      label: Which site?
+      options: [X, YouTube, Reddit, LinkedIn, Hacker News]
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Which page?
+      description: The kind of page is enough (home feed, a thread, search results). Leave out anything personal.
+    validations:
+      required: true
+  - type: input
+    id: popup
+    attributes:
+      label: What does the Feedwall popup say on that page?
+      placeholder: '"0 posts found on this page", or "12 posts found · 0 hidden · 0 marked"'
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+      description: A screenshot helps. Blur or crop other people's posts, and never include your API key.
+  - type: input
+    id: version
+    attributes:
+      label: Feedwall version and browser
+      placeholder: "0.2.2, Chrome 140"

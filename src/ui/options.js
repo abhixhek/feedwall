@@ -181,7 +181,7 @@
         el("div", { className: "post-text", textContent: r.text }),
         el("div", { className: "row" }, fits ? verdict("right", "Right, it fits") : verdict("missed", "This should fit"), fits ? verdict("wrong", "Wrong") : null));
     });
-    out.replaceChildren(summary, hint, ...rows);
+    out.replaceChildren(...[summary, hint, ...rows].filter(Boolean)); // replaceChildren(null) would print the word "null"
   });
 
   // ---- sets ------------------------------------------------------------------------------------------------------

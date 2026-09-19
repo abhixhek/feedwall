@@ -24,6 +24,7 @@
 <body>
 <div id="feed"></div>
 <div id="hud">loading…</div>
+<script>if (new URLSearchParams(location.search).get("hud") === "0") document.getElementById("hud").style.display = "none";</script>
 
 <script src="../../src/core/topics.js"></script>
 <script src="../../src/core/judge.js"></script>
@@ -58,6 +59,7 @@
   }
 
   const store = { settings: { ...judge.DEFAULT_SETTINGS, apiKey: "harness", blurUntilJudged: params.get("blur") === "1",
+    enabled: params.get("off") !== "1",
     focusSites: params.get("focus") === "1" ? [SITE] : [],
     topics: [T.fromLibrary("engagement_bait"), T.fromLibrary("rage_bait"), T.fromLibrary("ai_slop"), T.fromLibrary("hard_sell"), T.fromLibrary("indie_building", "keep")] }, feedback: [], examples: [] };
   const log = { judged: 0, hide: 0, dim: 0, keep: 0, highlight: 0, filter: 0, feedback: 0 };

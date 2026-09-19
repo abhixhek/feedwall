@@ -18,7 +18,7 @@
     blurUntilJudged: false,
     aboutMe: "",
     focusSites: [], // sites where only posts that fit a wanted topic are shown
-    disabledSites: [],
+    disabledSites: ["linkedin"], // LinkedIn is the least tolerant of extensions, so the reader opts in
     dailyBudget: 3000,
     // `topics` is filled in by topics.migrate() so that v0.1 settings carry over
   };

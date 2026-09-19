@@ -35,7 +35,13 @@
     const wanted = T.activeTopics(settings, adapter.site).filter((t) => T.WANTED.has(t.action));
     if (!wanted.length) { $("site-focus").disabled = true; $("focus-note").textContent = "needs a Keep or Highlight topic first"; }
     chrome.tabs.sendMessage(tab.id, { type: "health" }, (health) => {
-      if (chrome.runtime.lastError || !health) { $("site-health").textContent = "Reload the page to start filtering."; return; }
+      if (chrome.runtime.lastError || !health) { $("site-health").textContent = "Reload this page to start filtering (it was open before Feedwall was installed or updated)."; return; }
+      const why = {
+        off: "Feedwall is switched off (top right).", no_key: "Add your API key in settings to start.", site_off: "Filtering is switched off for this site.",
+        no_topics: "No topics apply to this site. Add one, or pick a set, in settings.", no_worker: "Feedwall's background worker did not answer. Reload the extension on chrome://extensions.",
+        starting: "Starting…",
+      }[health.status] || (String(health.status || "").startsWith("error:") ? "Feedwall hit an error: " + health.status.slice(6) : "");
+      if (why) { $("site-health").textContent = why; return; }
       $("site-health").textContent = health.seen
         ? `${health.seen} posts found · ${health.hidden} hidden · ${health.marked} marked${health.filtered ? ` · ${health.filtered} filtered` : ""}`
         : "0 posts found on this page. If this is a feed, the site may have changed its layout.";

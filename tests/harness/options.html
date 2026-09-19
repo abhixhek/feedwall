@@ -51,6 +51,23 @@
   for (const src of ["core/topics.js", "core/judge.js", "core/stats.js", "ui/options.js"]) {
     await new Promise((resolve, reject) => { const s = document.createElement("script"); s.src = "../../src/" + src; s.onload = resolve; s.onerror = reject; document.body.append(s); });
   }
+  // Scripted scenes (?scene=editor | report) so screenshots and the demo video can be regenerated.
+  const scene = new URLSearchParams(location.search).get("scene");
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const jump = (el, offset) => window.scrollTo(0, el.getBoundingClientRect().top + window.scrollY - (offset || 12));
+  await wait(150);
+  if (scene === "editor") {
+    document.getElementById("new-topic").click();
+    const set = (id, value) => { const el = document.getElementById(id); el.value = value; el.dispatchEvent(new Event("input")); };
+    set("t-name", "Pricing experiments");
+    set("t-description", "Posts sharing the result of a pricing change on a software product");
+    set("t-counts", "Before-and-after numbers, what was tested");
+    set("t-not", "General pricing advice with no result");
+    document.getElementById("t-test").click();
+    await wait(200);
+    jump(document.getElementById("t-test-out"), 250); // keep the last fields in view, and show the results
+  }
+  if (scene === "report") jump(document.getElementById("review"));
 })();
 </script>
 </body>

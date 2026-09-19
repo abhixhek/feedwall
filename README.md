@@ -2,9 +2,13 @@
 
 **Your feed, your rules, in plain English.** Tell your browser what you want more of and what you want gone. Feedwall applies it on X, YouTube, Reddit, LinkedIn and Hacker News, keeps everything one click away, and shows you when it got it wrong.
 
-![A feed with wanted posts marked, bait collapsed, and a borderline post dimmed](docs/feed.png)
+[![Feedwall demo: a feed before and after, focus mode, topics, and the test button](docs/demo.gif)](docs/demo.mp4)
 
-*Screenshots are from the test bench in `tests/harness`, which runs the real content script against a fake feed.*
+*30-second tour. [Full-quality video](docs/demo.mp4). The demo and the screenshots come from the test bench in `tests/harness`, which runs the real content script against a sample feed, so no real posts or accounts appear in them.*
+
+**Jump to:** [Set it up in five minutes](#set-it-up-in-five-minutes) · [Nothing is happening?](#nothing-is-happening) · [Privacy](#privacy) · [Cost](#cost) · [Status](#status)
+
+![A feed with wanted posts marked, bait collapsed, and a borderline post dimmed](docs/feed.png)
 
 ## Topics: you decide the classifications
 
@@ -58,15 +62,41 @@ If anything fails (network, key, budget), the post is shown. Feedwall never hide
 - Feedwall reads feed posts and comments. It skips direct messages, settings, login and compose pages.
 - Details: [PRIVACY.md](PRIVACY.md).
 
-## Install (from source)
+## Set it up in five minutes
 
-1. Get a TypeSafe API key at [typesafe.ai](https://typesafe.ai).
-2. Download or clone this repository.
-3. Open `chrome://extensions`, switch on **Developer mode**, click **Load unpacked**, and pick the repository folder.
-4. The settings page opens. Paste your key and press **Save and test**.
-5. Pick a set or write a topic, open a feed, and scroll.
+You need Chrome (or Edge, Brave, Arc) and your own TypeSafe API key. There is no build step and nothing to install besides the folder.
 
-Works in Chrome, Edge, Brave and Arc. There is no build step.
+1. **Get a key.** Sign in at [typesafe.ai](https://typesafe.ai) and create an API key. Feedwall uses your key directly; there is no Feedwall account.
+2. **Get the code.** Download the zip from the [latest release](https://github.com/abhixhek/feedwall/releases/latest) and unzip it, or:
+   ```bash
+   git clone https://github.com/abhixhek/feedwall.git
+   ```
+3. **Load it.** Open `chrome://extensions`, switch on **Developer mode** (top right), click **Load unpacked**, and pick the `feedwall` folder (the one that contains `manifest.json`).
+4. **Add your key.** The settings page opens by itself. Paste the key and press **Save and test**. A green line means the key works.
+5. **Say what you want.** Pick a built-in set (Indie builder, Deep work, Job hunt, Research) or press **New topic** and describe one in your own words. Press **Test it on my recent posts** once you have scrolled a feed for a minute.
+6. **Open a feed.** Go to X, YouTube, Reddit or Hacker News. **Reload any tab that was already open**, then scroll. Pin the Feedwall icon; the popup shows what it found on the page and what today has cost.
+
+LinkedIn is supported but switched off until you turn it on from the popup while on linkedin.com. LinkedIn is the site least tolerant of extensions, so that one is your call.
+
+To update: `git pull` (or unzip the new release over the old folder), press the reload arrow on the Feedwall card in `chrome://extensions`, then reload your open feed tabs.
+
+## Nothing is happening?
+
+Open the popup on the feed. It always says why:
+
+| The popup says | What to do |
+|---|---|
+| Reload this page to start filtering | The tab was open before Feedwall was installed or updated. Reload the tab. |
+| Feedwall is switched off | Use the switch at the top right of the popup. |
+| Add your API key in settings to start | Settings, paste the key, **Save and test**. |
+| Filtering is switched off for this site | Tick the site checkbox in the popup. LinkedIn starts this way. |
+| No topics apply to this site | Add a topic or pick a set in settings, or check the topic's **Where** boxes. |
+| Feedwall's background worker did not answer | Press the reload arrow on the Feedwall card in `chrome://extensions`, then reload the tab. |
+| N requests failed, so those posts were shown. Last error: ... | The error names the cause: `401` is a wrong or revoked key, `429` is TypeSafe's rate limit, a timeout is the network. Posts stay visible while requests fail. |
+| daily budget reached | Your own request limit for the day was hit. Raise it in settings, or wait until tomorrow. |
+| 0 posts found on this page | The site changed its layout. [Open a "site broke" issue](https://github.com/abhixhek/feedwall/issues/new?template=site-broke.yml); the fix is usually a few lines, see [CONTRIBUTING.md](CONTRIBUTING.md). |
+
+For the curious, the page script also writes its state to `data-fw-status` on the page's `<html>` element.
 
 ## Cost
 
@@ -74,14 +104,14 @@ Input is billed at $0.042 per million tokens and output is free. Every topic's w
 
 ## Status
 
-v0.2. What has been verified and what has not:
+v0.2.2 ([changelog](CHANGELOG.md)). What has been verified and what has not:
 
 | Piece | Status |
 |---|---|
 | Topics, decision order, sets, migration, cache, budget, fail-open, "Test it", counters under load | 31 automated tests (`npm test`) |
 | Starter topics and user-written topics (with and without context) | Checked against the live TypeSafe API on sample posts (2026-09-18) |
 | Content script: collapse, dim, keep/highlight, focus mode and Peek, teach menu, surviving React re-renders | Verified in the test bench for the X and Hacker News layouts |
-| Extension on live X | v0.1 ran end to end on a real feed (2026-09-18). That run exposed X re-render bugs, fixed in v0.1.1; v0.2 has not yet been re-checked live |
+| Extension on live X | v0.1 and v0.2.0 ran end to end on a real feed (2026-09-18). Those runs exposed X re-render and layout bugs, fixed in v0.1.1 and v0.2.1 |
 | Known issue on X | After a collapse, X's virtualized list can keep stale spacing for posts further down until its next layout pass |
 | Page selectors | Checked on the live pages of X, Hacker News, YouTube and LinkedIn (2026-09-18). Reddit is written from its documented structure and not yet checked live |
 
@@ -96,6 +126,7 @@ src/background.js  holds the key, calls the model, cache, budget, recent-posts b
 src/content/       the page script, styles, and one adapter per site
 src/ui/            popup and settings page
 tests/             unit tests and the visual test bench
+scripts/           rebuilds the demo video from the test bench
 docs/PRODUCT.md    the product design and the reasoning behind each decision
 ```
 
@@ -110,6 +141,9 @@ python3 -m http.server 8000               # then open:
 # http://localhost:8000/tests/harness/index.html?site=x&focus=1
 # http://localhost:8000/tests/harness/index.html?site=hackernews&eager=1
 # http://localhost:8000/tests/harness/options.html
+sh scripts/make_demo.sh                   # rebuilds docs/demo.mp4 and docs/demo.gif (needs Chrome and ffmpeg)
 ```
+
+Fixing a site adapter or adding a new site: [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Not affiliated with TypeSafe AI, X, Google, Reddit, LinkedIn or Y Combinator. MIT licensed.
